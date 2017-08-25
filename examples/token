@@ -143,7 +143,8 @@ if __name__ == '__main__':
     from cli import Choice, cli
 
     # CLI for whole module:
-    # cli(__main__)()
+    # import sys
+    # cli(sys.modules[__name__], convert_numbers=True)()
 
     # Smaller CLI:
     def token(method:Choice('xkcd', 'short')='xkcd', entropy:int=70):

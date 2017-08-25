@@ -54,10 +54,14 @@ def test_coerce_numbers():
     from cli import _coerce_numbers
     helper = lambda func, s: _coerce_numbers(
             inspect.signature(func).bind_partial(*s.split())
-            )
+            ).args
 
-    assert helper(token_no_annotation, 'xkcd 40').args == ('xkcd', 40)
-    assert helper(five, '1 2.0 3j 0xdeadbeef 077').args == (1, 2.0, 3j, '0xdeadbeef', 77)
+    # When types are annotated, coerce_numbers shouldn't interfere.
+    assert helper(token, 'xkcd 40') == ('xkcd', '40')
+
+    # Otherwise convert anything that looks like a number.
+    assert helper(five, '1 2.0 3j 0xdeadbeef 077') == (1, 2.0, 3j, '0xdeadbeef', 77)
+    assert helper(lambda x, y: None, '-1e6 -99') == (-1e6, -99)
 
 def test_Choice():
     Choice(1,2,3)

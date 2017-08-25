@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+
+"""Somewhat secure token generators.
+
+Tokens are generated using an alphabet and SytemRandom(). To generate a token,
+specify how many bits of entropy you want.
+
+# How much entropy do you need, anyway?
+
+Assume adversary has same order of magnitude guessing costs as Amazon EC2
+prices: Price password for £10-20 million, at that price it's probably cheaper
+to abduct you and beat the password out of you.
+
+If you're able to keep anonymous or you want the password to be secure for more
+than, say 10 years, you should probably go for something with more entropy.
+
+If the password will be subject to less than 10 million attempts/second, per
+second of reference computer time, then 55 bits of entropy meets my criteria.
+
+If the password will be stored by some eejit who uses, say salted md5 hashes
+and the hash might be stolen, then you need 69 bits of entropy for the same
+criteria.
+
+With my system's wordlist, an xkcd password of 4 words has ~64 bits of entropy.
+
+# Pronounceable passwords
+
+I used to be a fan of pronounceable passwords, but given the analysis in [1], I
+don't trust single word pronounceable passwords any more. Multiple word
+pronounceable passwords are still OK, but the calculation of their entropy is
+tricky.
+
+[1] http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.692.7981&rep=rep1&type=pdf#page=203
+
+"""
+
+from __future__ import division
+import math
+import random
+
+__all__ = (
+        'token_from_population',
+        'alphanumeric',
+        'xkcd',
+        'entropy_required',
+        )
+
+R = random.SystemRandom()
+
+# {{{ Helpers
+def _required_length(entropy, len_population):
+    # Shannon Entropy = log_2(len(alphabet)^len(token))
+    # len(token) = (Shannon Entropy) / log_2(len(alphabet))
+    return int(entropy // math.log(len_population, 2))
+
+def build_wordlist(filename):
+    """Returns a tuple of words from a file after normalization.
+
+    Removes all "words" ending in 's, converts to lower case and applies NFKD
+    normalization.
+
+    """
+    import unicodedata
+    lines = set()
+    with open(filename) as f:
+        for line in f.readlines():
+            if line[-3:] != "'s\n":
+                # This is probably expensive
+                lines.add(unicodedata.normalize('NFKD', line.strip().lower()))
+    lines = tuple(lines)
+    return lines
+# }}}
+
+# {{{ Interface
+def token_from_population(entropy, population, sep=""):
+    "Return a k sized list of elements chosen from the population with replacement."
+    k = _required_length(entropy, len(population))
+    try:
+        return sep.join(R.choices(population, k=k))
+    except AttributeError:
+        token = []
+        for _ in range(k):
+            token.append(R.choice(population))
+        return sep.join(token)
+
+def alphanumeric(entropy):
+    "Generate a readable alphanumeric token with at least <entropy>."
+    symbols = "abcdefghijkmnpqrstuvxyz" +\
+              "ABCDEFGHIJKMNPQRSTUVXYZ" +\
+              "123456789"
+    return token_from_population(entropy, symbols)
+
+def xkcd(entropy, wordlist=None, sep=" "):
+    "An appropriate number of words randomly selected from wordlist."
+    # Default dict
+    if wordlist is None:
+        wordlist = build_wordlist("/usr/share/dict/words")
+    return token_from_population(entropy, wordlist, sep)
+
+def entropy_required(usecase, dollars, confidence=.999):
+    """
+    Entropy required for Prob(1-confidence) of a crack within $dollars compute time.
+
+    Assuming that compute time occurs on powerful circa 2015 hardware. Possibly
+    suitable for modelling against contemporary threats buying loads of compute
+    time, definitely not for far future capabilities.
+
+    """
+
+    years = dollars / 23000
+
+    # From hashcat performance table for a 8 GPU machine
+    # At March 2015 prices, 8 GPUs for one year cost $23,000 on Amazon EC2.
+    # online slow|fast guessed
+    # bcrypt/pbkdf2 interpolated from
+    # http://www.benjaminellett.com/hashcat-benchmarks/
+    mega_attempts_per_second = {
+            "online slow" : 0.001,
+            "online fast" : 1,
+            "bcrypt" : .034,
+            "pbkdf2" : 10.8,
+            "WPA/WPA2" : 2.096,
+            "SMF" : 18606,
+            # ^^ plausible examples
+            # vv silly applications
+            "MD5" : 115840,
+            "SHA1" : 37336,
+            "SHA256" : 14416,
+            "SHA3" : 4976,
+            }
+
+    return math.log(
+            mega_attempts_per_second[usecase]*1000000
+            *360*24*365*years
+            *1/(1-confidence),
+            2)
+
+# }}}
+
+# {{{ CLI use
+if __name__ == '__main__':
+
+    from cli import Choice, cli
+
+    # CLI for whole module:
+    # cli(__main__)()
+
+    # Smaller CLI:
+    def token(method:Choice('xkcd', 'short')='xkcd', entropy:int=70):
+        """
+        Generate a cryptographic token with a given entropy.
+
+        """
+        if method == 'xkcd':
+            return xkcd(entropy)
+        else:
+            return alphanumeric(entropy)
+
+    cli(token)()
+
+    # The Smaller CLI is equivalent to the following argparse code:
+
+    # import argparse
+    # parser = argparse.ArgumentParser(description="Generate a cryptographic token with a given entropy.")
+    # parser.add_argument('method', nargs='?', default='xkcd', choices=('xkcd', 'short'))
+    # parser.add_argument('entropy', nargs='?', default=70, type=int)
+    # args = parser.parse_args()
+
+    # if args.method == 'xkcd':
+    #     print(xkcd(args.entropy))
+    # else:
+    #     print(alphanumeric(args.entropy))
+
+# }}}

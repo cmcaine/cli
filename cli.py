@@ -34,7 +34,6 @@ def function2cli(func):
 
     """
     parser = generate_parser(func)
-    sig = inspect.signature(func)
 
     def inner(argv=None, exit=True):
         import sys

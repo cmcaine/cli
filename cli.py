@@ -1,7 +1,7 @@
 """
 Inspect functions or objects containing funcs to produce CLIs with argparse.
 
-Meat of this module is generate_parser and (to a lesser extent)
+The meat of this module is generate_parser and (to a lesser extent)
 generate_parser_obj.
 
 Currently there is no easy way to add documentation to parameters.
@@ -140,7 +140,9 @@ def generate_parser(func, parser=None):
         - KEYWORD_ONLY = options
         - defaults = defaults
         - type annotations = type
+            - TODO: use default value's type if not NoneType?
             - TODO: str to dict?
+        - TODO: varargs = nargs='*'
 
     Special types:
         - cli.Choice
@@ -160,7 +162,7 @@ def generate_parser(func, parser=None):
         if param.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
             name = param.name
             if not _isempty(param.default):
-                kwargs["nargs"]='?'
+                kwargs["nargs"] = '?'
         elif param.kind is inspect.Parameter.KEYWORD_ONLY:
             if len(param.name) == 1:
                 name = f"-{param.name}"

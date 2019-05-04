@@ -139,9 +139,7 @@ def generate_parser(func, parser=None):
         - KEYWORD_ONLY = options
         - defaults = defaults
         - type annotations = type
-            - TODO: use default value's type if not NoneType?
             - TODO: str to dict?
-        - TODO: varargs = nargs='*'
 
     Special types:
         - cli.Choice
@@ -169,11 +167,16 @@ def generate_parser(func, parser=None):
                 name = f"--{param.name}"
             if _isempty(param.default):
                 kwargs["required"] = True
+        elif param.kind is inspect.Parameter.VAR_POSITIONAL:
+            name = param.name
+            kwargs["nargs"] = "*"
         else:
             raise NotImplementedError(f"Params of {param.kind} are not supported yet.")
 
         if not _isempty(param.default):
             kwargs["default"] = param.default
+            if param.default is not None:
+                kwargs["type"] = type(param.default)
         if not _isempty(param.annotation) and type(param.annotation) is type:
             if issubclass(param.annotation, Choice):
                 kwargs["choices"] = param.annotation.choices

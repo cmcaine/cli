@@ -14,7 +14,7 @@ import sys
 
 def cli(obj):
     """
-    Rtn a function that, when called with sys.argv will act like a cli to func.
+    Rtn a function that, when called with sys.argv will act like a cli to obj.
 
     The wrapper performs simple validation and conversion on argv, then calls
     func. For details of signature interpretation, see generate_parser.
@@ -118,14 +118,14 @@ def generate_parser_obj(obj):
     def functions(obj):
         return tuple([o[1] for o in inspect.getmembers(obj) if inspect.isfunction(o[1])])
 
-    for f in functions(obj):
+    for func in functions(obj):
         thisparser = subparsers.add_parser(
-                f.__name__,
-                description=inspect.cleandoc(f.__doc__) if f.__doc__ else None
+                func.__name__,
+                description=inspect.cleandoc(func.__doc__) if func.__doc__ else None
                 )
-        generate_parser(f, thisparser)
-        # Setting this so function is the value of f, rather than a later lookup of attribute 'f'.
-        thisparser.set_defaults(**{'{func}':f})
+        generate_parser(func, thisparser)
+        # Save a reference for obj2cli to call if this subparser is used.
+        thisparser.set_defaults(**{'{func}':func})
 
     return parser
 

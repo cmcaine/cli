@@ -12,7 +12,7 @@ def token_no_annotation(method='xkcd', entropy=70):
     "example function"
     pass
 
-def five(a, b, c, d, e):
+def five(a, b, c, d, e:str):
     "example function"
     pass
 
@@ -32,6 +32,12 @@ def varargs(*positionals, kw1=1):
 def varargs2(pos1, pos2, *positionals, kw1=1):
     return locals()
 
+def flags(*, flag=False, trueflag=True):
+    return locals()
+
+def coerce_bool_example(pos:bool):
+    pass
+
 ### Helper functions
 
 def tcode(func, argstr, code):
@@ -43,6 +49,23 @@ def tcode(func, argstr, code):
         assert e.code == code
 
 ### Tests
+
+def test_bool_flags():
+    # bool flags should get special treatment.
+    # If a default is given then it's a flag that doesn't take arguments. If the flag is given, the opposite value to the default is output.
+    # If there is no default, then custom string -> bool conversion.
+    parser = generate_parser(flags)
+    assert parser.parse_args(''.split()).flag == False
+    assert parser.parse_args('--flag'.split()).flag == True
+    assert parser.parse_args(''.split()).trueflag == True
+    assert parser.parse_args('--trueflag'.split()).flag == False
+
+def test_bool_coercion():
+    parser = generate_parser(coerce_bool_example)
+    for yes in ('y', 'yes', '1', 'true'):
+        assert parser.parse_args(f'{yes}'.split()).pos == True
+    for no in ('n', 'no', '0', 'false'):
+        assert parser.parse_args(f'{no}'.split()).pos == False
 
 def test_choices():
     tcode(choice_example, '1', 0)
@@ -68,17 +91,10 @@ def test_obj2cli():
     tcode(test_cli, 'test_choices -h', 0)
 
 def test_coerce_numbers():
-    from cli import _coerce_numbers
-    helper = lambda func, s: _coerce_numbers(
-            inspect.signature(func).bind_partial(*s.split())
-            ).args
-
-    # When types are annotated, coerce_numbers shouldn't interfere.
-    assert helper(token, 'xkcd 40') == ('xkcd', '40')
-
-    # Otherwise convert anything that looks like a number.
-    assert helper(five, '1 2.0 3j 0xdeadbeef 077') == (1, 2.0, 3j, '0xdeadbeef', 77)
-    assert helper(lambda x, y: None, '-1e6 -99') == (-1e6, -99)
+    for val, exp in zip(
+            '1 2.0 3j 0xdeadbeef 077 -1e6 -99'.split(),
+            (1, 2.0, 3j, '0xdeadbeef', 77, -1e6, -99)):
+        assert opportunistic(coerce_number)(val) == exp
 
 def test_Choice():
     Choice(1,2,3)
@@ -109,6 +125,19 @@ def test_varargs2():
     parser = generate_parser(varargs2)
     assert parser.parse_args('a b one two three four'.split()).positionals == 'one two three four'.split()
     assert parser.parse_args('a b one two three four --kw1 5'.split()).positionals == 'one two three four'.split()
+
+def test_default_type():
+    parser = generate_parser(five, default_type=opportunistic(coerce_number))
+    assert parser.parse_args('1 2 apple pear 3'.split()).a == 1
+    assert parser.parse_args('1 2 apple pear 3'.split()).c == 'apple'
+    # e is explicitly typed as str, so shouldn't opportunistically converted
+    assert parser.parse_args('1 2 apple pear 3'.split()).e == '3'
+
+def test_obj2cli2():
+    import cli
+    tcode(cli, '-h', 0)
+    tcode(cli, 'coerce_bool no', 0)
+    tcode(cli, 'coerce_bool', 2)
 
 # For other version of Choice...
 # def test_Choice():

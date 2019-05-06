@@ -2,6 +2,8 @@
 
 > An extremely easy to use library to generate python CLIs from functions through introspection.
 
+Available on pip: `pip install cmcaine-cli`
+
 Automatically generate the equivalent of this:
 
 ```python

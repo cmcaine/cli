@@ -70,32 +70,36 @@ The code is very short, clearly documented inline and all advertised features ar
 ## Reference
 
 Function signature interpretation:
-    - (`POSITIONAL_ONLY`, `POSITIONAL_OR_KEYWORD`) = positional
-    - positional with default = optional positional
-    - `KEYWORD_ONLY` = options
-    - defaults = defaults
-	- Boolean special casing
-	    - If the default is `True` or `False`, the option does not take any
-	      arguments. Instead, if the option is given on the
-	      commandline, the opposite value to the default is given to
-	      the function.
-	    - Example:
-		```python
-		def rm(*, force=False):
-		    pass
 
-		cli(rm)(['--force']) # ~== rm(force=True)
-		cli(rm)([]) # ~== rm(force=False)
-		```
-    - type annotations = type
-	- If the `type` is callable, it is called by `argparse` on the relevant substring
-	- If the type is `bool`, it is replaced by `coerce_bool`
-	- Provide your own custom function or handle the strings in your
-	  function body if you need something fancier.
+   - (`POSITIONAL_ONLY`, `POSITIONAL_OR_KEYWORD`) = positional
+   - positional with default = optional positional
+   - `KEYWORD_ONLY` = options
+   - defaults = defaults
+     - Boolean special casing
+       - If the default is `True` or `False`, the option does not take any
+	 arguments. Instead, if the option is given on the
+	 commandline, the opposite value to the default is given to
+	 the function.
+	 - Example:
+		
+```python
+def rm(*, force=False):
+    pass
+
+cli(rm)(['--force']) # ~== rm(force=True)
+cli(rm)([]) # ~== rm(force=False)
+```
+		
+   - type annotations = type
+     - If the `type` is callable, it is called by `argparse` on the relevant substring
+     - If the type is `bool`, then [`coerce_bool`](https://github.com/cmcaine/cli/blob/master/cli.py#L94) will be called on the string given for that argument
+     - Provide your own custom function or handle the strings in your function body if you need something fancier.
 
 Special types:
-    - cli.Choice
-	- `def foo(x:Choice(1,2))` interpreted as `add_argument('x', choices=(1,2), type=int)`
+  - cli.Choice
+    - `def foo(x:Choice(1,2))` interpreted as `add_argument('x', choices=(1,2), type=int)`
+
+Example function signatures that `cli` understands:
 
 ```python
 def example(positional, arguments):
@@ -107,7 +111,8 @@ def defaults(normally_one=1):
 def typed(positional:bool, positional2:int):
     pass
 
-# keyword some-positional-arg --keyword2=foo --keyword1=4
+# `keyword some-positional-arg --keyword2=foo --keyword1=4`
+# turns into keyword("some-positional-arg", keyword1=4, keyword2="foo")
 def keyword(positional, *, keyword1=3, keyword2='default_filename'):
     pass
 

@@ -49,9 +49,11 @@ R = random.SystemRandom()
 
 # {{{ Helpers
 def _required_length(entropy, len_population):
-    # Shannon Entropy = log_2(len(alphabet)^len(token))
-    # len(token) = (Shannon Entropy) / log_2(len(alphabet))
-    return int(entropy // math.log(len_population, 2))
+    """
+    Shannon Entropy = log_2(len(alphabet)^len(token))
+    len(token) = ceil((Shannon Entropy) / log_2(len(alphabet)))
+    """
+    return math.ceil(entropy / math.log(len_population, 2))
 
 def build_wordlist(filename):
     """Returns a tuple of words from a file after normalization.
